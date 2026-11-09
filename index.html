@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>手稿工坊 - 小说创作辅助</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#e8e4da;--sheet:#f7f5ee;--field:#fdfcf8;--ink:#22282a;--ink2:#5a6365;--green:#2b6360;--brass:#a8823f;--rose:#b5667a;--brick:#963f33;--rule:#d4cdbb;
+--serif:"Songti SC","Noto Serif SC","Source Han Serif SC","Noto Serif CJK SC",STSong,Georgia,serif;
+--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+html,body{height:100%}
+body{font:15px/1.7 var(--sans);background:var(--paper);color:var(--ink);display:flex;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* 侧栏：铜绿底，黄铜双线作为刻线 */
+.rail{width:208px;flex-shrink:0;background:var(--green);color:#e4ebe7;display:flex;flex-direction:column;padding:22px 0 16px}
+.brand{font:700 21px/1.3 var(--serif);letter-spacing:.06em;padding:0 22px 14px;margin-bottom:10px;border-bottom:3px double var(--brass)}
+.brand small{display:block;font:12px/1.5 var(--sans);letter-spacing:0;opacity:.7;font-weight:400}
+#nav{display:flex;flex-direction:column}
+.nav{width:100%;background:none;border:0;border-left:3px solid transparent;padding:10px 19px;text-align:left;font-size:15px;opacity:.85}
+.nav:hover{opacity:1;background:rgba(255,255,255,.06)}
+.nav.on{opacity:1;border-left-color:var(--brass);background:rgba(255,255,255,.12)}
+.nav i{float:right;font-style:normal;font-size:12px;opacity:.75}
+.wname{font:600 13px/1.5 var(--serif);padding:16px 22px 4px;opacity:.8;overflow-wrap:anywhere}
+.rail-foot{margin-top:auto;padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.rail .btn.ghost{background:none;border-color:rgba(255,255,255,.4);color:#e4ebe7}
+.status{font-size:12px;opacity:.7;margin-top:6px;overflow-wrap:anywhere}
+
+/* 主区域 */
+.main{flex:1;min-width:0;overflow-y:auto;padding:34px 44px 64px}
+h1{font:700 26px/1.3 var(--serif);letter-spacing:.03em;margin-bottom:6px}
+h2.group{font:600 18px/1.4 var(--serif);margin:28px 0 12px;display:flex;align-items:center;gap:14px}
+h2.group::after{content:"";flex:1;height:1px;background:var(--brass);opacity:.5}
+.lead{color:var(--ink2);font-size:14px;margin-bottom:22px}
+.bar{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.bar .lead{margin:0}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.note{font-size:12px;color:var(--ink2)}
+
+.btn{background:var(--green);color:#fff;border:1px solid var(--green);border-radius:2px;padding:7px 14px;font-size:14px}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:none;color:var(--green);border-color:var(--green)}
+.btn.danger{background:none;color:var(--brick);border-color:var(--brick)}
+.btn.sm{padding:4px 11px;font-size:13px}
+
+/* 分类与筛选 */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;align-items:center}
+.chip{background:var(--sheet);border:1px solid var(--rule);border-radius:2px;padding:4px 12px;font-size:13px;color:var(--ink2)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--sheet)}
+.chip button{background:none;border:0;color:inherit;margin-left:4px;font-size:15px;line-height:1}
+.catmgr{background:var(--sheet);border:1px solid var(--rule);padding:14px 16px;margin:4px 0 20px;display:flex;flex-direction:column;gap:10px}
+.catmgr p{font-size:13px;color:var(--ink2)}
+#newCat{max-width:220px;padding:6px 10px;border:1px solid var(--rule);border-radius:2px;background:var(--field)}
+
+/* 作品卡片：左侧色条表示状态 */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.card{display:flex;flex-direction:column;gap:6px;min-height:132px;padding:14px 16px;background:var(--sheet);border:1px solid var(--rule);border-left:4px solid var(--ink2);border-radius:2px;text-align:left}
+.card:hover{background:#fff}
+.card[data-st="构思中"]{border-left-color:var(--brass)}
+.card[data-st="连载中"]{border-left-color:var(--green)}
+.card[data-st="搁置"]{border-left-color:var(--rose)}
+.card span{display:block}
+.card .t{font:600 17px/1.4 var(--serif)}
+.card .s{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;color:var(--ink2)}
+.card .m{margin-top:auto;padding-top:6px;font-size:12px;color:var(--ink2)}
+
+/* 两栏：列表 + 详情 */
+.panes{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}
+.list{position:sticky;top:0;max-height:calc(100vh - 120px);overflow:auto;background:var(--sheet);border:1px solid var(--rule);padding:12px}
+.list>.btn{width:100%;margin-bottom:10px}
+.list ul{list-style:none}
+.item{display:flex;justify-content:space-between;gap:8px;padding:9px 10px;border-left:3px solid transparent;border-bottom:1px solid #e6e0d1;font-size:14px;cursor:pointer;overflow-wrap:anywhere}
+.item:hover{background:#f0ece1}
+.item.on{border-left-color:var(--brass);background:#eee8d8}
+.item small{color:var(--ink2);font-size:12px;white-space:nowrap}
+.sub{font-size:12px;color:var(--ink2);margin:14px 0 2px}
+
+/* 表单与稿纸 */
+.sheet{background:var(--sheet);border:1px solid var(--rule);padding:22px 24px;display:flex;flex-direction:column;gap:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+label{display:block;font-size:13px;color:var(--ink2);margin-bottom:5px}
+input[type=text],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:2px;background:var(--field);font-size:15px}
+textarea{font-family:var(--serif);font-size:16px;line-height:30px;padding:6px 14px;resize:vertical;background-image:repeating-linear-gradient(transparent 0 29px,#e3dccd 29px 30px);background-attachment:local;background-position:0 6px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brass);box-shadow:0 0 0 2px rgba(168,130,63,.2)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* 回收站 */
+.trash{background:var(--sheet);border:1px solid var(--rule);padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.trash small{display:block;color:var(--ink2);font-size:12px}
+.tag{font-size:12px;color:var(--brass);border:1px solid var(--brass);padding:0 6px;margin-right:8px;border-radius:2px}
+
+@media (max-width:760px){
+  body{flex-direction:column;height:100dvh}
+  .rail{width:100%;flex-direction:row;align-items:center;overflow-x:auto;padding:4px 6px}
+  .brand,.wname,.status{display:none}
+  #nav{flex-direction:row;flex-shrink:0}
+  .nav{width:auto;white-space:nowrap;border-left:0;border-bottom:3px solid transparent;padding:10px 12px}
+  .nav.on{border-bottom-color:var(--brass)}
+  .rail-foot{margin:0;padding:0 6px;flex-direction:row;flex-shrink:0}
+  .main{padding:16px}
+  .grid2,.panes{grid-template-columns:1fr}
+  .list{position:static;max-height:240px}
+  .sheet{padding:16px}
+}
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b6360">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand">手稿工坊<small>轻小说创作辅助</small></div>
+  <nav id="nav"></nav>
+  <div class="rail-foot">
+    <button class="btn ghost sm" data-act="export">导出备份</button>
+    <button class="btn ghost sm" data-act="import">导入备份</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <div class="status" id="status"></div>
+  </div>
+</aside>
+
+<main class="main" id="view"></main>
+
+<script>
+const KEY = 'novel_workshop_v2', LEGACY = 'novel_writer_data';
+const DAY = 864e5, KEEP = 30;
+const DEFAULT_CATS = ['百合', '恋爱', '奇幻', '蒸汽朋克', '日常', '悬疑', '其他'];
+const STATUS = ['构思中', '连载中', '已完结', '搁置'];
+const SETTING_CATS = ['规则', '道具', '地点', '生物', '组织', '其他'];
+const POOL = { character: 'characters', chapter: 'chapters', setting: 'settings' };
+const LABEL = { work: '作品', character: '角色', chapter: '章节', setting: '设定' };
+const NAME = {
+  work: x => x.title || '未命名作品',
+  character: x => x.name || '未命名角色',
+  chapter: x => x.title || '未命名章节',
+  setting: x => x.name || '未命名设定'
+};
+const VIEW_KIND = { settings: 'setting', characters: 'character', chapters: 'chapter' };
+
+let store = { cats: [...DEFAULT_CATS], works: [], trash: [] };
+let ui = { view: 'library', wid: null, cat: '全部', catEdit: false, sel: {} };
+let locked = false;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 9));
+const W = () => store.works.find(w => w.id === ui.wid) || null;
+const listOf = kind => (W() ? W()[POOL[kind]] : []);
+const selItem = kind => listOf(kind).find(x => x.id === ui.sel[kind]) || null;
+
+/* ---------- 数据：读取、迁移、保存 ---------- */
+function normWork(w) {
+  const arr = a => (Array.isArray(a) ? a : []).map(x => ({ ...x, id: x.id || uid() }));
+  return {
+    id: w.id || uid(), title: w.title ?? '', category: w.category ?? '',
+    status: STATUS.includes(w.status) ? w.status : '构思中',
+    platform: w.platform ?? '', tags: w.tags ?? '', logline: w.logline ?? '', world: w.world ?? '', scraps: w.scraps ?? '',
+    characters: arr(w.characters), chapters: arr(w.chapters), settings: arr(w.settings),
+    created: w.created || Date.now()
+  };
+}
+
+// 旧版单作品数据迁移为作品库
+function migrate(old) {
+  const b = old.basic || {};
+  const chapters = Array.isArray(old.chapters) ? old.chapters : [];
+  const work = normWork({
+    title: b.title || '未命名作品', tags: b.tags, logline: b.logline, world: b.world, scraps: old.scraps,
+    characters: old.characters, chapters, status: chapters.length ? '连载中' : '构思中'
+  });
+  return { cats: [...DEFAULT_CATS], works: [work], trash: [] };
+}
+
+function load() {
+  let d = null;
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) d = JSON.parse(raw);
+    else {
+      const old = localStorage.getItem(LEGACY);
+      if (old) d = migrate(JSON.parse(old));
+    }
+  } catch (err) {
+    console.error(err);
+    locked = true;
+    alert('读取本地保存的数据失败。页面将以空白状态打开，原数据不会被覆盖。');
+  }
+  if (d && typeof d === 'object') {
+    store.cats = Array.isArray(d.cats) ? d.cats : [...DEFAULT_CATS];
+    store.works = Array.isArray(d.works) ? d.works.map(normWork) : [];
+    store.trash = Array.isArray(d.trash) ? d.trash : [];
+  }
+  purge();
+}
+
+// 超过保留期的回收站内容自动清除
+function purge() {
+  const cut = Date.now() - KEEP * DAY;
+  store.trash = store.trash.filter(t => t.deletedAt > cut);
+}
+
+function save() {
+  if (locked) { $('#status').textContent = '数据未能读取，已暂停保存'; return; }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(store));
+    $('#status').textContent = '已保存 ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    console.error(err);
+    $('#status').textContent = '保存失败：浏览器存储空间可能不足';
+  }
+}
+
+/* ---------- 回收站 ---------- */
+const toTrash = (kind, item, wid) => store.trash.push({ tid: uid(), kind, wid, deletedAt: Date.now(), item });
+
+function restore(tid) {
+  const i = store.trash.findIndex(t => t.tid === tid);
+  if (i < 0) return;
+  const t = store.trash[i];
+  if (t.kind === 'work') {
+    store.works.unshift(t.item);
+  } else {
+    const parent = store.works.find(x => x.id === t.wid);
+    if (!parent) return alert('这条内容所属的作品不在作品库中。请先恢复该作品，再恢复这条内容。');
+    parent[POOL[t.kind]].push(t.item);
+  }
+  store.trash.splice(i, 1);
+}
+
+/* ---------- 导入导出 ---------- */
+function exportData() {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: `手稿工坊备份-${new Date().toISOString().slice(0, 10)}.json` });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function importFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let next = null;
+    try {
+      const d = JSON.parse(reader.result);
+      next = Array.isArray(d.works)
+        ? { cats: Array.isArray(d.cats) ? d.cats : [...DEFAULT_CATS], works: d.works.map(normWork), trash: Array.isArray(d.trash) ? d.trash : [] }
+        : (d.basic ? migrate(d) : null);
+    } catch (err) { console.error(err); }
+    if (!next) return alert('导入失败：文件不是有效的手稿工坊备份。');
+    if (!confirm('导入会替换当前全部作品和回收站。建议先导出备份，确定继续吗？')) return;
+    store = next;
+    locked = false;
+    ui = { ...ui, view: 'library', wid: null, sel: {} };
+    purge();
+    save();
+    render();
+    alert('导入成功。');
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+/* ---------- 渲染 ---------- */
+function render() {
+  if (!['library', 'trash'].includes(ui.view) && !W()) ui.view = 'library';
+  renderNav();
+  const views = {
+    library: viewLibrary, basic: viewBasic, scraps: viewScraps, trash: viewTrash,
+    settings: () => viewItems('setting'), characters: () => viewItems('character'), chapters: () => viewItems('chapter')
+  };
+  $('#view').innerHTML = views[ui.view]();
+}
+
+function renderNav() {
+  const w = W();
+  const btn = (v, label, n = '') => `<button class="nav${ui.view === v ? ' on' : ''}" data-act="nav" data-view="${v}">${label}${n === '' ? '' : `<i>${n}</i>`}</button>`;
+  let h = btn('library', '作品库');
+  if (w) {
+    h += `<div class="wname">《${esc(NAME.work(w))}》</div>`
+      + btn('basic', '基础设定') + btn('settings', '设定集', w.settings.length)
+      + btn('characters', '角色', w.characters.length) + btn('chapters', '章节大纲', w.chapters.length)
+      + btn('scraps', '废稿箱');
+  }
+  h += btn('trash', '回收站', store.trash.length || '');
+  $('#nav').innerHTML = h;
+}
+
+function cardHTML(w) {
+  return `<button class="card" data-st="${esc(w.status)}" data-act="open" data-id="${w.id}">
+    <span class="t">${esc(NAME.work(w))}</span>
+    <span class="s">${esc(w.logline || w.tags || '还没有写一句话卖点。')}</span>
+    <span class="m">${esc(w.status)}　角色 ${w.characters.length}　章节 ${w.chapters.length}　设定 ${w.settings.length}</span></button>`;
+}
+
+function viewLibrary() {
+  const cats = store.cats;
+  const filters = ['全部', ...cats, '未分类'].map(c =>
+    `<button class="chip${ui.cat === c ? ' on' : ''}" data-act="filter" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+  const mgr = ui.catEdit ? `<div class="catmgr">
+      <p>删除分类不会删除作品，它们会归入未分类。</p>
+      <div class="chips">${cats.map(c => `<span class="chip">${esc(c)}<button data-act="delcat" data-cat="${esc(c)}" aria-label="删除分类${esc(c)}">×</button></span>`).join('')}</div>
+      <div class="chips"><input type="text" id="newCat" placeholder="新分类名称"><button class="btn sm" data-act="addcat">添加分类</button></div>
+    </div>` : '';
+  const visible = store.works.filter(w => ui.cat === '全部' || (ui.cat === '未分类' ? !w.category : w.category === ui.cat));
+  const extra = [...new Set(store.works.map(w => w.category).filter(c => c && !cats.includes(c)))];
+  let body = '';
+  for (const c of [...cats, ...extra, '']) {
+    const g = visible.filter(w => (w.category || '') === c);
+    if (g.length) body += `<h2 class="group">${esc(c || '未分类')}</h2><div class="cards">${g.map(cardHTML).join('')}</div>`;
+  }
+  if (!store.works.length) body = '<p class="lead">还没有作品。点击「新建作品」开始第一部。</p>';
+  else if (!body) body = '<p class="lead">这个分类下还没有作品。</p>';
+  return `<div class="bar"><div><h1>作品库</h1><p class="lead">共 ${store.works.length} 部作品</p></div>
+    <div class="btns"><button class="btn" data-act="newwork">+ 新建作品</button><button class="btn ghost" data-act="togglecat">${ui.catEdit ? '收起分类' : '管理分类'}</button></div></div>
+    ${mgr}<div class="chips">${filters}</div>${body}`;
+}
+
+function viewBasic() {
+  const w = W();
+  const opt = (list, val) => list.map(x => `<option${x === val ? ' selected' : ''}>${esc(x)}</option>`).join('');
+  return `<h1>基础设定</h1><p class="lead">作品的基本信息。分类决定它在作品库里归入哪一组。</p>
+  <div class="sheet">
+    <div><label>作品名</label><input type="text" data-target="work" data-key="title" value="${esc(w.title)}" placeholder="例如：变身后的我生命只剩三天"></div>
+    <div class="grid2">
+      <div><label>分类</label><select data-target="work" data-key="category"><option value="">未分类</option>${opt(store.cats, w.category)}</select></div>
+      <div><label>状态</label><select data-target="work" data-key="status">${opt(STATUS, w.status)}</select></div>
+    </div>
+    <div class="grid2">
+      <div><label>投稿平台</label><input type="text" data-target="work" data-key="platform" value="${esc(w.platform)}" placeholder="例如：菠萝包"></div>
+      <div><label>标签</label><input type="text" data-target="work" data-key="tags" value="${esc(w.tags)}" placeholder="用斜杠分隔"></div>
+    </div>
+    <div><label>一句话卖点</label><input type="text" data-target="work" data-key="logline" value="${esc(w.logline)}"></div>
+    <div><label>总纲与核心规则</label><textarea rows="12" data-target="work" data-key="world" placeholder="力量体系、城市背景、世界的底层规则...">${esc(w.world)}</textarea></div>
+    <div class="foot"><span class="note">移入回收站后，作品内的内容会一起保留。</span><button class="btn danger sm" data-act="delwork">移入回收站</button></div>
+  </div>`;
+}
+
+function viewScraps() {
+  return `<h1>废稿箱</h1><p class="lead">写废的段落、用不上的梗、突发奇想，先存在这里，以后都是素材。</p>
+  <div class="sheet"><textarea rows="26" data-target="work" data-key="scraps" placeholder="在这里粘贴废稿或突发奇想...">${esc(W().scraps)}</textarea></div>`;
+}
+
+function itemListHTML(kind) {
+  const arr = listOf(kind), on = ui.sel[kind];
+  if (!arr.length) return '<p class="lead" style="font-size:13px;margin:6px 4px">还没有内容。</p>';
+  const row = x => `<li class="item${x.id === on ? ' on' : ''}" data-act="select" data-kind="${kind}" data-id="${x.id}"><span>${esc(NAME[kind](x))}</span>${kind === 'setting' ? `<small>${esc(x.cat)}</small>` : ''}</li>`;
+  if (kind !== 'setting') return `<ul>${arr.map(row).join('')}</ul>`;
+  const live = arr.filter(x => !x.retired), old = arr.filter(x => x.retired);
+  return `<ul>${live.map(row).join('')}</ul>${old.length ? `<div class="sub">旧设定 ${old.length}</div><ul>${old.map(row).join('')}</ul>` : ''}`;
+}
+
+function detailHTML(kind) {
+  const it = selItem(kind);
+  if (!it) return '<p class="lead">从左侧选择一项编辑，或新建一项。</p>';
+  const foot = (extra = '') => `<div class="foot">${extra}<button class="btn danger sm" data-act="del" data-kind="${kind}">移入回收站</button></div>`;
+  if (kind === 'character') return `
+    <div class="grid2">
+      <div><label>角色姓名</label><input type="text" data-target="character" data-key="name" value="${esc(it.name)}"></div>
+      <div><label>身份 / 核心定位</label><input type="text" data-target="character" data-key="role" value="${esc(it.role)}" placeholder="例如：主角 / 搞笑担当 / 幕后黑手"></div>
+    </div>
+    <div><label>外貌、性格萌点与口头禅</label><textarea rows="12" data-target="character" data-key="bio">${esc(it.bio)}</textarea></div>
+    ${foot()}`;
+  if (kind === 'chapter') return `
+    <div><label>章节标题</label><input type="text" data-target="chapter" data-key="title" value="${esc(it.title)}"></div>
+    <div><label>本章核心事件</label><textarea rows="5" data-target="chapter" data-key="event" placeholder="这一章发生了什么？建议只推进一个主要事件，其余信息留到后文。">${esc(it.event)}</textarea></div>
+    <div><label>章末钩子</label><textarea rows="3" data-target="chapter" data-key="hook" placeholder="章末留下什么，让人想点开下一章？">${esc(it.hook)}</textarea></div>
+    ${foot()}`;
+  return `
+    <div class="grid2">
+      <div><label>设定名称</label><input type="text" data-target="setting" data-key="name" value="${esc(it.name)}"></div>
+      <div><label>类别</label><select data-target="setting" data-key="cat">${SETTING_CATS.map(c => `<option${c === it.cat ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+    </div>
+    <div><label>设定内容</label><textarea rows="12" data-target="setting" data-key="body">${esc(it.body)}</textarea></div>
+    ${foot(`<button class="btn ghost sm" data-act="retire">${it.retired ? '恢复为生效设定' : '标为旧设定'}</button>`)}`;
+}
+
+function viewItems(kind) {
+  const meta = {
+    setting: ['设定集', '规则、道具、地点与生物都记在这里。不再沿用的设定标为旧设定，删掉的会进入回收站。', '+ 新增设定'],
+    character: ['角色', '身份、性格与口头禅，写到自己能一眼认出这个人。', '+ 新增角色'],
+    chapter: ['章节大纲', '每章一个主要事件，章末留一个钩子。', '+ 新增章节']
+  }[kind];
+  return `<h1>${meta[0]}</h1><p class="lead">${meta[1]}</p>
+    <div class="panes">
+      <div class="list"><button class="btn" data-act="add" data-kind="${kind}">${meta[2]}</button><div id="list">${itemListHTML(kind)}</div></div>
+      <div class="sheet" id="detail">${detailHTML(kind)}</div>
+    </div>`;
+}
+
+function viewTrash() {
+  const items = [...store.trash].sort((a, b) => b.deletedAt - a.deletedAt);
+  const rows = items.map(t => {
+    const parent = t.kind === 'work' ? null : store.works.find(w => w.id === t.wid);
+    const owner = t.kind === 'work' ? '' : (parent ? `来自《${esc(NAME.work(parent))}》` : '所属作品不在库中，需先恢复作品');
+    const left = Math.max(0, Math.ceil((t.deletedAt + KEEP * DAY - Date.now()) / DAY));
+    const info = [owner, `删除于 ${new Date(t.deletedAt).toLocaleDateString()}`, `${left} 天后自动清除`].filter(Boolean).join('　');
+    return `<div class="trash">
+      <div><span class="tag">${LABEL[t.kind]}</span><strong>${esc(NAME[t.kind](t.item))}</strong><small>${info}</small></div>
+      <div class="btns"><button class="btn sm" data-act="restore" data-id="${t.tid}">恢复</button><button class="btn danger sm" data-act="purge" data-id="${t.tid}">永久删除</button></div>
+    </div>`;
+  }).join('');
+  return `<div class="bar"><div><h1>回收站</h1><p class="lead">删除的作品、角色、章节和设定会保留 ${KEEP} 天，到期自动清除。</p></div>
+    ${items.length ? '<div class="btns"><button class="btn danger" data-act="emptytrash">清空回收站</button></div>' : ''}</div>
+    ${rows || '<p class="lead">回收站是空的。</p>'}`;
+}
+
+/* ---------- 交互 ---------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const { act, id, kind, cat, view } = el.dataset;
+  switch (act) {
+    case 'nav': ui.view = view; break;
+    case 'newwork': {
+      const w = normWork({ title: '未命名作品', category: ['全部', '未分类'].includes(ui.cat) ? '' : ui.cat });
+      store.works.unshift(w);
+      Object.assign(ui, { wid: w.id, view: 'basic', sel: {} });
+      break;
+    }
+    case 'open': Object.assign(ui, { wid: id, view: 'basic', sel: {} }); break;
+    case 'filter': ui.cat = cat; break;
+    case 'togglecat': ui.catEdit = !ui.catEdit; break;
+    case 'addcat': {
+      const v = $('#newCat').value.trim();
+      if (!v) return;
+      if (store.cats.includes(v)) return alert('这个分类已经存在。');
+      store.cats.push(v);
+      break;
+    }
+    case 'delcat':
+      if (!confirm(`删除分类「${cat}」？作品不会被删除，它们会归入未分类。`)) return;
+      store.cats = store.cats.filter(c => c !== cat);
+      store.works.forEach(w => { if (w.category === cat) w.category = ''; });
+      if (ui.cat === cat) ui.cat = '全部';
+      break;
+    case 'select': ui.sel[kind] = id; break;
+    case 'add': {
+      const w = W(), n = w[POOL[kind]].length + 1;
+      const item = kind === 'character' ? { id: uid(), name: '新角色', role: '', bio: '' }
+        : kind === 'chapter' ? { id: uid(), title: `第 ${n} 章`, event: '', hook: '' }
+        : { id: uid(), name: '新设定', cat: '规则', retired: false, body: '' };
+      w[POOL[kind]].push(item);
+      ui.sel[kind] = item.id;
+      break;
+    }
+    case 'del': {
+      const it = selItem(kind);
+      if (!it || !confirm(`把「${NAME[kind](it)}」移入回收站？${KEEP} 天内可以恢复。`)) return;
+      W()[POOL[kind]] = W()[POOL[kind]].filter(x => x !== it);
+      toTrash(kind, it, W().id);
+      ui.sel[kind] = null;
+      break;
+    }
+    case 'retire': {
+      const it = selItem('setting');
+      if (it) it.retired = !it.retired;
+      break;
+    }
+    case 'delwork': {
+      const w = W();
+      if (!confirm(`把《${NAME.work(w)}》移入回收站？它内部的角色、章节与设定会一起保留 ${KEEP} 天。`)) return;
+      store.works = store.works.filter(x => x !== w);
+      toTrash('work', w, null);
+      Object.assign(ui, { wid: null, view: 'library' });
+      break;
+    }
+    case 'restore': restore(id); break;
+    case 'purge':
+      if (!confirm('永久删除后无法恢复，确定吗？')) return;
+      store.trash = store.trash.filter(t => t.tid !== id);
+      break;
+    case 'emptytrash':
+      if (!confirm('清空回收站？所有内容将被永久删除。')) return;
+      store.trash = [];
+      break;
+    case 'export': exportData(); return;
+    case 'import': $('#importFile').click(); return;
+    default: return;
+  }
+  save();
+  render();
+});
+
+// 字段输入即保存；列表标题同步刷新
+function onField(e) {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.key || !W()) return;
+  const target = el.dataset.target === 'work' ? W() : selItem(el.dataset.target);
+  if (!target) return;
+  target[el.dataset.key] = el.value;
+  save();
+  if (el.dataset.key === 'title' && el.dataset.target === 'work') renderNav();
+  if (VIEW_KIND[ui.view]) $('#list').innerHTML = itemListHTML(VIEW_KIND[ui.view]);
+}
+document.addEventListener('input', onField);
+document.addEventListener('change', onField);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'newCat') document.querySelector('[data-act="addcat"]').click();
+});
+
+load();
+save();
+render();
+$('#importFile').addEventListener('change', importFile);
+</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
+</body>
+</html>

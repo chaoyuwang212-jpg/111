@@ -1,0 +1,14 @@
+{
+  "name": "手稿工坊",
+  "short_name": "手稿工坊",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8e4da",
+  "theme_color": "#2b6360",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
