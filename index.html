@@ -87,6 +87,8 @@ textarea{font-family:var(--serif);font-size:16px;line-height:30px;padding:6px 14
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brass);box-shadow:0 0 0 2px rgba(168,130,63,.2)}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 
+.aiwrap{display:flex;flex-direction:column;gap:10px}
+.aiout{white-space:pre-wrap;font-family:var(--serif);font-size:15px;line-height:1.9;background:var(--field);border:1px dashed var(--rule);padding:12px 14px;min-height:56px}
 /* 回收站 */
 .trash{background:var(--sheet);border:1px solid var(--rule);padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .trash small{display:block;color:var(--ink2);font-size:12px}
@@ -270,10 +272,10 @@ function importFile(e) {
 
 /* ---------- 渲染 ---------- */
 function render() {
-  if (!['library', 'trash'].includes(ui.view) && !W()) ui.view = 'library';
+  if (!['library', 'trash', 'ai'].includes(ui.view) && !W()) ui.view = 'library';
   renderNav();
   const views = {
-    library: viewLibrary, basic: viewBasic, scraps: viewScraps, trash: viewTrash,
+    library: viewLibrary, basic: viewBasic, scraps: viewScraps, trash: viewTrash, ai: viewAI,
     settings: () => viewItems('setting'), characters: () => viewItems('character'), chapters: () => viewItems('chapter')
   };
   $('#view').innerHTML = views[ui.view]();
@@ -289,7 +291,7 @@ function renderNav() {
       + btn('characters', '角色', w.characters.length) + btn('chapters', '章节大纲', w.chapters.length)
       + btn('scraps', '废稿箱');
   }
-  h += btn('trash', '回收站', store.trash.length || '');
+  h += btn('ai', 'AI 设置') + btn('trash', '回收站', store.trash.length || '');
   $('#nav').innerHTML = h;
 }
 
@@ -371,7 +373,9 @@ function detailHTML(kind) {
   if (kind === 'chapter') return `
     <div><label>章节标题</label><input type="text" data-target="chapter" data-key="title" value="${esc(it.title)}"></div>
     <div><label>本章核心事件</label><textarea rows="5" data-target="chapter" data-key="event" placeholder="这一章发生了什么？建议只推进一个主要事件，其余信息留到后文。">${esc(it.event)}</textarea></div>
+    <div><label>正文（你已经写好的部分）</label><textarea rows="12" data-target="chapter" data-key="body" placeholder="把写好的正文贴在这里，AI 会从结尾接着写。">${esc(it.body)}</textarea></div>
     <div><label>章末钩子</label><textarea rows="3" data-target="chapter" data-key="hook" placeholder="章末留下什么，让人想点开下一章？">${esc(it.hook)}</textarea></div>
+    <div class="aiwrap"><div class="btns"><button class="btn ghost sm" data-act="askai">让 AI 续写</button><button class="btn ghost sm" data-act="copyai">复制续写</button></div><div class="aiout" id="aiOut">续写结果会显示在这里，满意再复制到正文里。</div></div>
     ${foot()}`;
   return `
     <div class="grid2">
@@ -481,6 +485,9 @@ document.addEventListener('click', e => {
       if (!confirm('清空回收站？所有内容将被永久删除。')) return;
       store.trash = [];
       break;
+    case 'askai': askAI(); return;
+    case 'copyai': navigator.clipboard.writeText($('#aiOut').textContent).then(() => alert('已复制到剪贴板。')).catch(() => alert('复制失败，请长按文字手动复制。')); return;
+    case 'saveai': saveAI(); return;
     case 'export': exportData(); return;
     case 'import': $('#importFile').click(); return;
     default: return;
@@ -506,6 +513,69 @@ document.addEventListener('change', onField);
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'newCat') document.querySelector('[data-act="addcat"]').click();
 });
+
+/* ---------- AI 续写 ---------- */
+const AI_KEY = 'novel_workshop_ai';
+function aiConfig() { try { return JSON.parse(localStorage.getItem(AI_KEY) || '{}'); } catch (e) { return {}; } }
+
+function viewAI() {
+  const c = aiConfig();
+  return `<h1>AI 设置</h1>
+  <p class="lead">填入在 Google AI Studio 申请的密钥。密钥只保存在这台手机上，不会写进网页，也不会进入备份文件。</p>
+  <div class="sheet">
+    <div><label>API 密钥</label><input type="password" id="aiKey" value="${esc(c.key)}" placeholder="粘贴密钥"></div>
+    <div><label>模型名称</label><input type="text" id="aiModel" value="${esc(c.model || 'gemini-2.5-flash')}"></div>
+    <div class="foot"><span class="note">免费额度有限，卡文时再用即可。</span><button class="btn sm" data-act="saveai">保存设置</button></div>
+  </div>`;
+}
+
+function saveAI() {
+  localStorage.setItem(AI_KEY, JSON.stringify({ key: $('#aiKey').value.trim(), model: $('#aiModel').value.trim() }));
+  alert('已保存。');
+}
+
+function buildPrompt(ch) {
+  const w = W();
+  const sets = w.settings.filter(x => !x.retired).map(x => `【${x.cat || '设定'}】${x.name || ''}：${x.body || ''}`).join('\n');
+  return `你是一位轻小说写作搭档。
+作品《${w.title || '未命名'}》，分类：${w.category || '未分类'}，基调：轻松、无脑爽、以喜剧和日常为主。
+一句话卖点：${w.logline || '（无）'}
+总纲与核心规则：${w.world || '（无）'}
+
+可用设定：
+${sets || '（暂无）'}
+
+当前章节：${ch.title || ''}
+本章核心事件：${ch.event || '（无）'}
+章末钩子：${ch.hook || '（无）'}
+
+已写正文：
+${ch.body || '（还没有正文，请根据本章事件从头写起）'}
+
+请从已写正文的结尾接着续写约 600 字。要求：只推进一个主要事件；不新增大的世界观设定，不解释设定；语言口语化；保持角色已有的性格和口头禅。直接输出续写的正文，不要加标题或说明。`;
+}
+
+async function askAI() {
+  const cfg = aiConfig();
+  if (!cfg.key) return alert('请先在「AI 设置」里填入密钥。');
+  const ch = selItem('chapter');
+  if (!ch) return alert('请先选择一章。');
+  const out = $('#aiOut');
+  if (!out) return;
+  out.textContent = '正在续写，请稍等…';
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model || 'gemini-2.5-flash')}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.key },
+      body: JSON.stringify({ contents: [{ parts: [{ text: buildPrompt(ch) }] }] })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error?.message || `请求失败（${res.status}）`);
+    out.textContent = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '没有返回内容，可能被安全过滤拦下了，换个写法再试。';
+  } catch (err) {
+    out.textContent = '续写失败：' + err.message;
+  }
+}
 
 load();
 save();
