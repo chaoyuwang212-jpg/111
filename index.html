@@ -375,7 +375,7 @@ function detailHTML(kind) {
     <div><label>本章核心事件</label><textarea rows="5" data-target="chapter" data-key="event" placeholder="这一章发生了什么？建议只推进一个主要事件，其余信息留到后文。">${esc(it.event)}</textarea></div>
     <div><label>正文（你已经写好的部分）</label><textarea rows="12" data-target="chapter" data-key="body" placeholder="把写好的正文贴在这里，AI 会从结尾接着写。">${esc(it.body)}</textarea></div>
     <div><label>章末钩子</label><textarea rows="3" data-target="chapter" data-key="hook" placeholder="章末留下什么，让人想点开下一章？">${esc(it.hook)}</textarea></div>
-    <div class="aiwrap"><div class="btns"><button class="btn ghost sm" data-act="askai">让 AI 续写</button><button class="btn ghost sm" data-act="copyai">复制续写</button></div><div class="aiout" id="aiOut">续写结果会显示在这里，满意再复制到正文里。</div></div>
+    <div class="aiwrap"><div class="btns"><button class="btn ghost sm" data-act="askai">让 AI 续写</button><button class="btn ghost sm" data-act="copyprompt">复制提示词</button><button class="btn ghost sm" data-act="copyai">复制续写</button></div><div class="aiout" id="aiOut">续写结果会显示在这里，满意再复制到正文里。</div></div>
     ${foot()}`;
   return `
     <div class="grid2">
@@ -488,6 +488,7 @@ document.addEventListener('click', e => {
     case 'askai': askAI(); return;
     case 'copyai': navigator.clipboard.writeText($('#aiOut').textContent).then(() => alert('已复制到剪贴板。')).catch(() => alert('复制失败，请长按文字手动复制。')); return;
     case 'saveai': saveAI(); return;
+    case 'copyprompt': copyPrompt(); return;
     case 'export': exportData(); return;
     case 'import': $('#importFile').click(); return;
     default: return;
@@ -553,6 +554,14 @@ ${sets || '（暂无）'}
 ${ch.body || '（还没有正文，请根据本章事件从头写起）'}
 
 请从已写正文的结尾接着续写约 600 字。要求：只推进一个主要事件；不新增大的世界观设定，不解释设定；语言口语化；保持角色已有的性格和口头禅。直接输出续写的正文，不要加标题或说明。`;
+}
+
+function copyPrompt() {
+  const ch = selItem('chapter');
+  if (!ch) return alert('请先选择一章。');
+  navigator.clipboard.writeText(buildPrompt(ch))
+    .then(() => alert('提示词已复制。打开你手机上的 AI 聊天应用，粘贴发送，再把回复复制回正文。'))
+    .catch(() => alert('复制失败，请稍后再试。'));
 }
 
 async function askAI() {
